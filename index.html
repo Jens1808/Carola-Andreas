@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weihnachtsgruß</title>
+
+  <style>
+    :root{
+      --overlay: rgba(0,0,0,0.60);
+      --card: rgba(0,0,0,0.58);
+      --border: rgba(255,255,255,0.12);
+      --text: rgba(255,255,255,0.92);
+      --muted: rgba(255,255,255,0.75);
+    }
+
+    *{ box-sizing: border-box; }
+
+    body{
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      color: var(--text);
+
+      /* Hintergrundbild aus dem Repo */
+      background-image: url("Freunde.jpeg");
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: clamp(16px, 4vw, 40px);
+      overflow-x: hidden;
+    }
+
+    /* dunkler Overlay für bessere Lesbarkeit */
+    .overlay{
+      position: fixed;
+      inset: 0;
+      background: var(--overlay);
+      z-index: 0;
+    }
+
+    .wrap{
+      position: relative;
+      z-index: 2; /* über Schnee */
+      width: min(920px, 100%);
+    }
+
+    .card{
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: clamp(18px, 3.2vw, 36px);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: 0 16px 40px rgba(0,0,0,0.35);
+    }
+
+    h1{
+      margin: 0 0 14px 0;
+      font-size: clamp(22px, 2.6vw, 34px);
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+
+    .letter{
+      font-size: clamp(15px, 1.35vw, 18px);
+      line-height: 1.65;
+      color: var(--text);
+      margin: 0;
+      white-space: pre-wrap; /* Zeilenumbrüche erhalten */
+    }
+
+    .signoff{
+      margin-top: 22px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: clamp(14px, 1.2vw, 16px);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .names{
+      font-weight: 650;
+      color: var(--text);
+    }
+
+    .hint{
+      opacity: 0.9;
+    }
+
+    @media (max-width: 420px){
+      .signoff{ justify-content: flex-start; }
+    }
+
+    /* =========================
+       Schneefall (Canvas)
+       ========================= */
+    #snow{
+      position: fixed;
+      inset: 0;
+      z-index: 1;            /* über Overlay, unter Card */
+      pointer-events: none;  /* nicht klickbar */
+    }
+
+    /* Optional: leichte Vignette, wirkt oft edler */
+    .vignette{
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background: radial-gradient(circle at center,
+        rgba(0,0,0,0.15) 0%,
+        rgba(0,0,0,0.35) 70%,
+        rgba(0,0,0,0.55) 100%);
+      mix-blend-mode: multiply;
+      pointer-events: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="vignette" aria-hidden="true"></div>
+  <div class="overlay" aria-hidden="true"></div>
+
+  <!-- Schneefall -->
+  <canvas id="snow" aria-hidden="true"></canvas>
+
+  <main class="wrap">
+    <section class="card" role="article" aria-label="Weihnachtsgruß">
+      <h1>Frohe Weihnachten</h1>
+
+      <p class="letter">Liebe Carola, lieber Andreas,
+
+manchmal merkt man erst mit der Zeit, wie wertvoll bestimmte Menschen im eigenen Leben sind. Ihr gehört definitiv dazu. Wir sind sehr froh, euch zu haben – ihr seid eine echte Bereicherung für uns, und wir schätzen euch sehr.
+
+Dieses Jahr haben wir uns überraschend schwer damit getan, ein passendes Weihnachtsgeschenk für euch zu finden. Nicht, weil ihr es nicht verdient hättet – ganz im Gegenteil –, sondern weil keine Idee sich wirklich richtig angefühlt hat. Und genau dabei ist uns etwas klar geworden: Das Schönste für uns ist die Zeit, die wir miteinander verbringen.
+
+Deshalb möchten wir euch dieses Jahr etwas schenken, das von Herzen kommt: Zeit mit uns.
+Wir laden euch ein, gemeinsam mit uns ein Wochenende in Berlin zu verbringen. Die Unterbringung übernehmen wir – alles Weitere füllen wir mit gemeinsamen Momenten, Gesprächen, Lachen und Erinnerungen.
+
+Wir freuen uns jetzt schon sehr darauf, diese Zeit mit euch zu teilen.
+
+Frohe Weihnachten
+von Herzen
+Jens & Svenja 🎄✨</p>
+
+      <div class="signoff">
+        <div class="names">Jens &amp; Svenja</div>
+        <div class="hint">Hintergrund: Freunde.jpeg</div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      const canvas = document.getElementById("snow");
+      const ctx = canvas.getContext("2d", { alpha: true });
+
+      let w, h, dpr;
+      let flakes = [];
+      let lastTime = 0;
+
+      // Für Performance: auf sehr schwachen Geräten weniger Partikel
+      const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const baseFlakeCount = prefersReducedMotion ? 0 : 140; // anpassen, wenn du mehr/weniger willst
+
+      function resize() {
+        dpr = Math.max(1, window.devicePixelRatio || 1);
+        w = Math.floor(window.innerWidth);
+        h = Math.floor(window.innerHeight);
+
+        canvas.style.width = w + "px";
+        canvas.style.height = h + "px";
+        canvas.width = Math.floor(w * dpr);
+        canvas.height = Math.floor(h * dpr);
+
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        // Flakes neu initialisieren (damit es nach Resize gut aussieht)
+        initFlakes();
+      }
+
+      function rand(min, max) {
+        return Math.random() * (max - min) + min;
+      }
+
+      function initFlakes() {
+        flakes = [];
+        const count = Math.max(0, Math.floor(baseFlakeCount * (w / 1000 + 0.4)));
+        for (let i = 0; i < count; i++) {
+          flakes.push(makeFlake(true));
+        }
+      }
+
+      function makeFlake(randomY) {
+        const r = rand(0.8, 3.2);
+        return {
+          x: rand(0, w),
+          y: randomY ? rand(0, h) : -10,
+          r,
+          vy: rand(0.7, 2.2) * (r / 2.2),
+          vx: rand(-0.6, 0.6),
+          drift: rand(0.002, 0.01), // leichte Wellenbewegung
+          phase: rand(0, Math.PI * 2),
+          alpha: rand(0.35, 0.85)
+        };
+      }
+
+      function step(t) {
+        if (!lastTime) lastTime = t;
+        const dt = Math.min(32, t - lastTime); // clamp
+        lastTime = t;
+
+        ctx.clearRect(0, 0, w, h);
+
+        // Schnee zeichnen
+        for (let i = 0; i < flakes.length; i++) {
+          const f = flakes[i];
+
+          // Bewegung
+          f.phase += f.drift * dt;
+          f.x += f.vx * dt * 0.06 + Math.sin(f.phase) * 0.25;
+          f.y += f.vy * dt * 0.06;
+
+          // Wrap
+          if (f.y > h + 10) {
+            flakes[i] = makeFlake(false);
+            continue;
+          }
+          if (f.x < -10) f.x = w + 10;
+          if (f.x > w + 10) f.x = -10;
+
+          // Render (soft)
+          ctx.beginPath();
+          ctx.globalAlpha = f.alpha;
+          ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+          ctx.fillStyle = "white";
+          ctx.fill();
+        }
+
+        ctx.globalAlpha = 1;
+
+        requestAnimationFrame(step);
+      }
+
+      // Init
+      resize();
+      window.addEventListener("resize", resize, { passive: true });
+
+      // Wenn reduzierte Bewegung: Canvas bleibt leer, aber Seite funktioniert
+      if (!prefersReducedMotion) requestAnimationFrame(step);
+    })();
+  </script>
+</body>
+</html>
