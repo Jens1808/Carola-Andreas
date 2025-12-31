@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Weihnachtsgruß</title>
+  <title>Frohe Weihnachten</title>
 
   <style>
     :root{
@@ -22,7 +22,6 @@
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
       color: var(--text);
 
-      /* Hintergrundbild aus dem Repo */
       background-image: url("Freunde.jpeg");
       background-size: cover;
       background-position: center;
@@ -35,7 +34,6 @@
       overflow-x: hidden;
     }
 
-    /* dunkler Overlay für bessere Lesbarkeit */
     .overlay{
       position: fixed;
       inset: 0;
@@ -43,9 +41,27 @@
       z-index: 0;
     }
 
+    .vignette{
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background: radial-gradient(circle at center,
+        rgba(0,0,0,0.15) 0%,
+        rgba(0,0,0,0.35) 70%,
+        rgba(0,0,0,0.55) 100%);
+      pointer-events: none;
+    }
+
+    #snow{
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+    }
+
     .wrap{
       position: relative;
-      z-index: 2; /* über Schnee */
+      z-index: 2;
       width: min(920px, 100%);
     }
 
@@ -63,77 +79,36 @@
       margin: 0 0 14px 0;
       font-size: clamp(22px, 2.6vw, 34px);
       font-weight: 700;
-      letter-spacing: 0.2px;
     }
 
     .letter{
       font-size: clamp(15px, 1.35vw, 18px);
       line-height: 1.65;
-      color: var(--text);
-      margin: 0;
-      white-space: pre-wrap; /* Zeilenumbrüche erhalten */
+      white-space: pre-wrap;
     }
 
     .signoff{
       margin-top: 22px;
       padding-top: 18px;
       border-top: 1px solid var(--border);
-      color: var(--muted);
       font-size: clamp(14px, 1.2vw, 16px);
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      align-items: center;
-      justify-content: space-between;
+      color: var(--muted);
     }
 
     .names{
       font-weight: 650;
       color: var(--text);
     }
-
-    .hint{
-      opacity: 0.9;
-    }
-
-    @media (max-width: 420px){
-      .signoff{ justify-content: flex-start; }
-    }
-
-    /* =========================
-       Schneefall (Canvas)
-       ========================= */
-    #snow{
-      position: fixed;
-      inset: 0;
-      z-index: 1;            /* über Overlay, unter Card */
-      pointer-events: none;  /* nicht klickbar */
-    }
-
-    /* Optional: leichte Vignette, wirkt oft edler */
-    .vignette{
-      position: fixed;
-      inset: 0;
-      z-index: 0;
-      background: radial-gradient(circle at center,
-        rgba(0,0,0,0.15) 0%,
-        rgba(0,0,0,0.35) 70%,
-        rgba(0,0,0,0.55) 100%);
-      mix-blend-mode: multiply;
-      pointer-events: none;
-    }
   </style>
 </head>
 
 <body>
-  <div class="vignette" aria-hidden="true"></div>
-  <div class="overlay" aria-hidden="true"></div>
-
-  <!-- Schneefall -->
-  <canvas id="snow" aria-hidden="true"></canvas>
+  <div class="vignette"></div>
+  <div class="overlay"></div>
+  <canvas id="snow"></canvas>
 
   <main class="wrap">
-    <section class="card" role="article" aria-label="Weihnachtsgruß">
+    <section class="card">
       <h1>Frohe Weihnachten</h1>
 
       <p class="letter">Liebe Carola, lieber Andreas,
@@ -153,110 +128,60 @@ Jens & Svenja 🎄✨</p>
 
       <div class="signoff">
         <div class="names">Jens &amp; Svenja</div>
-        <div class="hint">Hintergrund: Freunde.jpeg</div>
       </div>
     </section>
   </main>
 
   <script>
-    (function () {
-      const canvas = document.getElementById("snow");
-      const ctx = canvas.getContext("2d", { alpha: true });
+    const canvas = document.getElementById("snow");
+    const ctx = canvas.getContext("2d");
+    let w, h, flakes = [];
 
-      let w, h, dpr;
-      let flakes = [];
-      let lastTime = 0;
+    function resize(){
+      w = canvas.width = window.innerWidth;
+      h = canvas.height = window.innerHeight;
+    }
+    window.addEventListener("resize", resize);
+    resize();
 
-      // Für Performance: auf sehr schwachen Geräten weniger Partikel
-      const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      const baseFlakeCount = prefersReducedMotion ? 0 : 140; // anpassen, wenn du mehr/weniger willst
+    function createFlake(){
+      return {
+        x: Math.random() * w,
+        y: Math.random() * h,
+        r: Math.random() * 3 + 1,
+        d: Math.random() + 0.5
+      };
+    }
 
-      function resize() {
-        dpr = Math.max(1, window.devicePixelRatio || 1);
-        w = Math.floor(window.innerWidth);
-        h = Math.floor(window.innerHeight);
+    for(let i=0;i<120;i++) flakes.push(createFlake());
 
-        canvas.style.width = w + "px";
-        canvas.style.height = h + "px";
-        canvas.width = Math.floor(w * dpr);
-        canvas.height = Math.floor(h * dpr);
-
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-        // Flakes neu initialisieren (damit es nach Resize gut aussieht)
-        initFlakes();
+    function draw(){
+      ctx.clearRect(0,0,w,h);
+      ctx.fillStyle = "white";
+      ctx.beginPath();
+      for(let f of flakes){
+        ctx.moveTo(f.x, f.y);
+        ctx.arc(f.x, f.y, f.r, 0, Math.PI*2);
       }
+      ctx.fill();
+      move();
+    }
 
-      function rand(min, max) {
-        return Math.random() * (max - min) + min;
-      }
-
-      function initFlakes() {
-        flakes = [];
-        const count = Math.max(0, Math.floor(baseFlakeCount * (w / 1000 + 0.4)));
-        for (let i = 0; i < count; i++) {
-          flakes.push(makeFlake(true));
+    function move(){
+      for(let f of flakes){
+        f.y += f.d;
+        if(f.y > h){
+          f.y = -5;
+          f.x = Math.random() * w;
         }
       }
+    }
 
-      function makeFlake(randomY) {
-        const r = rand(0.8, 3.2);
-        return {
-          x: rand(0, w),
-          y: randomY ? rand(0, h) : -10,
-          r,
-          vy: rand(0.7, 2.2) * (r / 2.2),
-          vx: rand(-0.6, 0.6),
-          drift: rand(0.002, 0.01), // leichte Wellenbewegung
-          phase: rand(0, Math.PI * 2),
-          alpha: rand(0.35, 0.85)
-        };
-      }
-
-      function step(t) {
-        if (!lastTime) lastTime = t;
-        const dt = Math.min(32, t - lastTime); // clamp
-        lastTime = t;
-
-        ctx.clearRect(0, 0, w, h);
-
-        // Schnee zeichnen
-        for (let i = 0; i < flakes.length; i++) {
-          const f = flakes[i];
-
-          // Bewegung
-          f.phase += f.drift * dt;
-          f.x += f.vx * dt * 0.06 + Math.sin(f.phase) * 0.25;
-          f.y += f.vy * dt * 0.06;
-
-          // Wrap
-          if (f.y > h + 10) {
-            flakes[i] = makeFlake(false);
-            continue;
-          }
-          if (f.x < -10) f.x = w + 10;
-          if (f.x > w + 10) f.x = -10;
-
-          // Render (soft)
-          ctx.beginPath();
-          ctx.globalAlpha = f.alpha;
-          ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
-          ctx.fillStyle = "white";
-          ctx.fill();
-        }
-
-        ctx.globalAlpha = 1;
-
-        requestAnimationFrame(step);
-      }
-
-      // Init
-      resize();
-      window.addEventListener("resize", resize, { passive: true });
-
-      // Wenn reduzierte Bewegung: Canvas bleibt leer, aber Seite funktioniert
-      if (!prefersReducedMotion) requestAnimationFrame(step);
-    })();
+    function animate(){
+      draw();
+      requestAnimationFrame(animate);
+    }
+    animate();
   </script>
 </body>
 </html>
